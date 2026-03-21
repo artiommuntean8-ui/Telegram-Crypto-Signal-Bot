@@ -1,4 +1,5 @@
 # main.py
+import sys
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
@@ -69,6 +70,11 @@ async def market_scanner(bot: Bot):
 async def main():
     # 1. Inițializare baza de date
     await init_db()
+
+    # Verificare critică pentru Token
+    if not BOT_TOKEN:
+        logger.error("❌ EROARE: BOT_TOKEN lipsește! Verifică dacă ai creat fișierul '.env' cu token-ul tău.")
+        sys.exit(1)
     
     # 2. Configurare Bot și Dispatcher
     bot = Bot(token=BOT_TOKEN)
