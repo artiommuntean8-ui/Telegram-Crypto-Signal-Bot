@@ -11,6 +11,7 @@ Un bot de Telegram avansat, construit în Python, care monitorizează piața cri
   - **SHORT (Vinde):** Când RSI crește peste 70 (Supra-cumpărat).
 - **Management Utilizatori:** Sistem de abonare/dezabonare cu bază de date SQLite.
 - **Arhitectură Asincronă:** Folosește `aiogram` și `aiohttp` pentru performanță maximă (non-blocking).
+- **Securitate:** Token-ul și configurările sensibile sunt încărcate din variabile de mediu (`.env`).
 
 ## 📂 Structura Proiectului
 

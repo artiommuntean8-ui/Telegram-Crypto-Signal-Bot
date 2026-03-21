@@ -2,6 +2,7 @@
 from aiogram import Router, types
 from aiogram.filters import CommandStart, Command
 from database import add_user, deactivate_user
+from market_data import get_market_analysis
 
 # Router-ul gestionează rutele (comenzile)
 router = Router()
@@ -27,3 +28,17 @@ async def cmd_start(message: types.Message):
 async def cmd_stop(message: types.Message):
     await deactivate_user(message.from_user.id)
     await message.answer("❌ Te-ai dezabonat. Nu vei mai primi semnale.")
+
+@router.message(Command("status"))
+async def cmd_status(message: types.Message):
+    """Verifică piața la cerere."""
+    msg = await message.answer("🔍 Analizez piața Binance...")
+    data = await get_market_analysis()
+    
+    text = (f"📊 **ANALIZĂ LIVE BTC/USDT**\n\n"
+            f"💰 Preț: `{data['price']}$`\n"
+            f"📈 RSI: `{data['rsi']}`\n"
+            f"📉 Trend SMA: `{data['sma']}$`\n\n"
+            f"📢 **Verdict:** {data['signal']}")
+    
+    await msg.edit_text(text, parse_mode="Markdown")
