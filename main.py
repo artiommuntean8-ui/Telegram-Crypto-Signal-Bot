@@ -3,7 +3,8 @@ import sys
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher
-from config import BOT_TOKEN
+from aiogram.types import BufferedInputFile
+from config import BOT_TOKEN, PAIRS_CONFIG, PAYMENT_PROVIDER_TOKEN
 from database import init_db, get_active_users
 from handlers import router
 from market_data import get_market_analysis
@@ -14,60 +15,65 @@ logger = logging.getLogger(__name__)
 
 async def market_scanner(bot: Bot):
     """Rulează în fundal și caută semnale."""
-    logger.info("📡 Scanner-ul XAUUSD (Gold) a pornit...")
+    logger.info(f"📡 Scanner pornit pentru {len(PAIRS_CONFIG)} perechi...")
     
     # Ținem minte ultimul semnal ca să nu spamăm
-    last_signal_type = None 
+    # Structură: {'PAXGUSDT': 'Buy', 'BTCUSDT': None}
+    last_signal_types = {pair: None for pair in PAIRS_CONFIG}
     
     while True:
         await asyncio.sleep(10)  # Verificăm piața la fiecare 10 secunde
         
-        try:
-            # 1. Luăm datele reale
-            analysis = await get_market_analysis()
-            
-            if "error" in analysis:
-                continue
-            
-            signal_action = None
-            verdict = analysis['signal']
-            
-            # 2. Verificăm dacă verdictul s-a schimbat
-            if verdict == "Buy" and last_signal_type != "Buy":
-                signal_action = verdict
-                last_signal_type = "Buy"
-            elif verdict == "Sell" and last_signal_type != "Sell":
-                signal_action = verdict
-                last_signal_type = "Sell"
-            
-            # Dacă nu e semnal, doar afișăm în consolă statusul
-            if not signal_action:
-                logger.info(f"Gold: {analysis['price']} | RSI={analysis['rsi']} | {verdict}")
-                continue
+        for symbol, settings in PAIRS_CONFIG.items():
+            try:
+                # 1. Luăm datele reale cu factorul de risc specific
+                analysis = await get_market_analysis(symbol, settings['risk'])
+                
+                if "error" in analysis:
+                    continue
+                
+                signal_action = None
+                verdict = analysis['signal']
+                
+                # 2. Verificăm dacă verdictul s-a schimbat pentru ACEASTĂ pereche
+                if verdict == "Buy" and last_signal_types[symbol] != "Buy":
+                    signal_action = verdict
+                    last_signal_types[symbol] = "Buy"
+                elif verdict == "Sell" and last_signal_types[symbol] != "Sell":
+                    signal_action = verdict
+                    last_signal_types[symbol] = "Sell"
+                
+                # Log periodic
+                if not signal_action:
+                    logger.info(f"{settings['name']}: {analysis['price']} | RSI={analysis['rsi']} | {verdict}")
+                    continue
 
-            # 3. Construim mesajul
-            message = (
-                f"🏆 **XAUUSD (GOLD)**\n"
-                f"Signal: **{signal_action}** 🟢🔴\n"
-                f"Entry price: `{analysis['price']}`\n\n"
-                f"🎯 **TP 1(SAFE):** `{analysis['tp1']}`\n"
-                f"🎯 **TP 2(Risk active):** `{analysis['tp2']}`\n"
-                f"🎯 **TP 3(BIG RISK):** `{analysis['tp3']}`\n\n"
-                f"🛡️ **SL:** `{analysis['sl']}`"
-            )
+                # 3. Construim mesajul
+                message = (
+                    f"🏆 **{settings['name']}**\n"
+                    f"Signal: **{signal_action}** 🟢🔴\n"
+                    f"Entry price: `{analysis['price']}`\n\n"
+                    f"🎯 **TP 1:** `{analysis['tp1']}`\n"
+                    f"🎯 **TP 2:** `{analysis['tp2']}`\n"
+                    f"🎯 **TP 3:** `{analysis['tp3']}`\n\n"
+                    f"🛡️ **SL:** `{analysis['sl']}`"
+                )
+                
+                # 4. Trimitem la toți userii activi
+                users = await get_active_users()
+                if users:
+                    logger.info(f"Semnal {settings['name']} -> {len(users)} useri.")
+                    for user_id in users:
+                        # Resetăm cursorul imaginii pentru fiecare trimitere
+                        analysis['chart'].seek(0)
+                        photo_file = BufferedInputFile(analysis['chart'].read(), filename="chart.png")
+                        try:
+                            await bot.send_photo(user_id, photo=photo_file, caption=message, parse_mode="Markdown")
+                        except Exception as e:
+                            logger.error(f"Eroare trimitere la {user_id}: {e}")
             
-            # 4. Trimitem la toți userii activi
-            users = await get_active_users()
-            if users:
-                logger.info(f"Trimit semnal la {len(users)} utilizatori.")
-                for user_id in users:
-                    try:
-                        await bot.send_message(user_id, message, parse_mode="Markdown")
-                    except Exception as e:
-                        logger.error(f"Eroare trimitere la {user_id}: {e}")
-        
-        except Exception as e:
-            logger.error(f"Eroare în scanner: {e}")
+            except Exception as e:
+                logger.error(f"Eroare scanner pentru {symbol}: {e}")
 
 async def main():
     # 1. Inițializare baza de date
@@ -78,6 +84,12 @@ async def main():
         logger.error("❌ EROARE: BOT_TOKEN lipsește! Verifică dacă ai creat fișierul '.env' cu token-ul tău.")
         sys.exit(1)
     
+    # Verificare Token Plăți (Opțional, dar necesar pentru /plans)
+    if not PAYMENT_PROVIDER_TOKEN:
+        logger.warning("⚠️ ATENȚIE: PAYMENT_PROVIDER_TOKEN lipsește. Comenzile de abonare (/plans) nu vor funcționa.")
+    else:
+        logger.info("✅ Sistem de plăți detectat și activat.")
+
     # 2. Configurare Bot și Dispatcher
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()

@@ -1,10 +1,13 @@
 import aiohttp
+import matplotlib.pyplot as plt
+import io
 
-async def get_binance_data():
+
+async def get_binance_data(symbol):
     """Descarcă ultimele 50 de lumânări pentru calcul SMA și RSI."""
     url = "https://api.binance.com/api/v3/klines"
     params = {
-        "symbol": "PAXGUSDT",  # Folosim PAX Gold ca proxy pentru XAUUSD
+        "symbol": symbol,
         "interval": "1m",
         "limit": 50 
     }
@@ -41,11 +44,36 @@ def calculate_indicators(prices):
     
     return round(rsi, 2), round(sma, 2)
 
-async def get_market_analysis():
-    """Analizează XAUUSD și returnează semnale cu TP/SL."""
-    prices = await get_binance_data()
+def generate_chart_image(symbol, prices, sma_value):
+    """Generează un grafic simplu (Preț vs SMA) și îl returnează ca bytes."""
+    # Setăm backend-ul 'Agg' pentru a nu încerca să deschidă ferestre (server mode)
+    plt.switch_backend('Agg')
+    
+    plt.figure(figsize=(10, 5))
+    
+    # Plotăm prețurile (ultimele 50 lumânări)
+    plt.plot(prices, label='Price (Close)', color='#1f77b4', linewidth=2)
+    
+    # Desenăm o linie orizontală pentru SMA curent (orientativ)
+    plt.axhline(y=sma_value, color='orange', linestyle='--', label=f'SMA (Trend): {sma_value}')
+    
+    plt.title(f"Analiza {symbol} - M1 Chart")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    # Salvăm în memorie (buffer)
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    buf.seek(0)
+    plt.close()
+    
+    return buf
+
+async def get_market_analysis(symbol, risk_factor):
+    """Analizează simbolul dat și returnează semnale cu TP/SL."""
+    prices = await get_binance_data(symbol)
     if not prices:
-        return {"error": "Conexiune XAUUSD eșuată."}
+        return {"error": f"Conexiune {symbol} eșuată."}
     
     current_price = prices[-1]
     rsi, sma = calculate_indicators(prices)
@@ -53,16 +81,15 @@ async def get_market_analysis():
     if rsi is None:
         return {"error": "Date insuficiente."}
 
-    # --- LOGICA XAUUSD (GOLD) ---
+    # Generăm imaginea graficului
+    chart_buf = generate_chart_image(symbol, prices, sma)
+
+    # --- LOGICA DINAMICĂ ---
     signal_type = "NEUTRAL"
     sl = 0.0
     tp1 = 0.0
     tp2 = 0.0
     tp3 = 0.0
-
-    # Setări distanță (ajustate pentru scalping pe Aur)
-    # SL aprox 3$ | TP1 2$ | TP2 5$ | TP3 9$
-    risk_factor = 0.0015  # 0.15% mișcare pentru SL
 
     if rsi < 30:
         signal_type = "Buy"
@@ -82,6 +109,7 @@ async def get_market_analysis():
         "rsi": rsi,
         "sma": sma,
         "signal": signal_type,
+        "chart": chart_buf,  # Returnăm și imaginea
         "sl": round(sl, 2),
         "tp1": round(tp1, 2),
         "tp2": round(tp2, 2),
