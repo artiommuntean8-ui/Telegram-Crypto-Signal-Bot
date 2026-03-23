@@ -1,10 +1,11 @@
 # handlers.py
+import aiohttp
 from aiogram import Router, types, F
 from aiogram.filters import CommandStart, Command
-from aiogram.types import BufferedInputFile, LabeledPrice, PreCheckoutQuery, ContentType
+from aiogram.types import BufferedInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from database import add_user, deactivate_user, extend_subscription, get_active_users
 from market_data import get_market_analysis
-from config import ALLOWED_USERS, PAIRS_CONFIG, PAYMENT_PROVIDER_TOKEN
+from config import ALLOWED_USERS, PAIRS_CONFIG, LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID
 
 # Router-ul gestionează rutele (comenzile)
 router = Router()
@@ -29,79 +30,61 @@ async def cmd_start(message: types.Message):
 @router.message(Command("plans"))
 async def cmd_plans(message: types.Message):
     """Afișează opțiunile de abonament."""
-    if not PAYMENT_PROVIDER_TOKEN:
-        await message.answer("⚠️ Sistemul de plăți este momentan dezactivat (Missing Token).")
+    if not LEMONSQUEEZY_API_KEY:
+        await message.answer("⚠️ Sistemul de plăți este momentan dezactivat.")
         return
 
     await message.answer("👇 **Alege planul potrivit pentru tine:**")
 
-    # Plan Săptămânal
-    await message.answer_invoice(
-        title="Abonament Săptămânal",
-        description="Acces 7 zile la semnale XAUUSD Premium.",
-        payload="sub_weekly",
-        provider_token=PAYMENT_PROVIDER_TOKEN,
-        currency="USD", # Poți schimba în "EUR" sau "RON" dacă providerul cere
-        prices=[LabeledPrice(label="7 Zile", amount=1500)], # 15.00$ (în cenți)
-        start_parameter="sub-weekly"
-    )
+    # Definim produsele (Variant ID se ia din Dashboard-ul Lemon Squeezy)
+    # Exemplu: Products -> click pe produs -> Copy Variant ID
+    products = [
+        {"name": "Săptămânal", "variant_id": "11111", "price_display": "15$"},
+        {"name": "Lunar", "variant_id": "22222", "price_display": "45$"},
+        {"name": "Anual", "variant_id": "33333", "price_display": "400$"},
+    ]
 
-    # Plan Lunar
-    await message.answer_invoice(
-        title="Abonament Lunar",
-        description="Acces 30 zile la semnale XAUUSD Premium. (Best Value)",
-        payload="sub_monthly",
-        provider_token=PAYMENT_PROVIDER_TOKEN,
-        currency="USD",
-        prices=[LabeledPrice(label="30 Zile", amount=4500)], # 45.00$
-        start_parameter="sub-monthly"
-    )
-
-    # Plan Anual
-    await message.answer_invoice(
-        title="Abonament Anual",
-        description="Acces 365 zile la semnale XAUUSD Premium.",
-        payload="sub_yearly",
-        provider_token=PAYMENT_PROVIDER_TOKEN,
-        currency="USD",
-        prices=[LabeledPrice(label="365 Zile", amount=40000)], # 400.00$
-        start_parameter="sub-yearly"
-    )
-
-# --- PLĂȚI ---
-
-@router.pre_checkout_query()
-async def process_pre_checkout_query(pre_checkout_query: PreCheckoutQuery):
-    """Telegram verifică dacă totul e ok înainte să ia banii."""
-    await pre_checkout_query.answer(ok=True)
-
-@router.message(F.content_type == ContentType.SUCCESSFUL_PAYMENT)
-async def process_successful_payment(message: types.Message):
-    """Banii au fost încasați. Activăm abonamentul."""
-    payment_info = message.successful_payment
-    payload = payment_info.invoice_payload
+    keyboard = []
     
-    days_to_add = 0
-    plan_name = ""
+    async with aiohttp.ClientSession() as session:
+        headers = {
+            "Accept": "application/vnd.api+json",
+            "Content-Type": "application/vnd.api+json",
+            "Authorization": f"Bearer {LEMONSQUEEZY_API_KEY}"
+        }
+        
+        for prod in products:
+            # Structura JSON API pentru Lemon Squeezy
+            payload = {
+                "data": {
+                    "type": "checkouts",
+                    "attributes": {
+                        "checkout_data": {
+                            "custom": {
+                                "user_id": str(message.from_user.id),
+                                "plan_name": prod['name']
+                            }
+                        }
+                    },
+                    "relationships": {
+                        "store": {"data": {"type": "stores", "id": str(LEMONSQUEEZY_STORE_ID)}},
+                        "variant": {"data": {"type": "variants", "id": str(prod['variant_id'])}}
+                    }
+                }
+            }
 
-    if payload == "sub_weekly":
-        days_to_add = 7
-        plan_name = "Săptămânal"
-    elif payload == "sub_monthly":
-        days_to_add = 30
-        plan_name = "Lunar"
-    elif payload == "sub_yearly":
-        days_to_add = 365
-        plan_name = "Anual"
+            try:
+                async with session.post("https://api.lemonsqueezy.com/v1/checkouts", json=payload, headers=headers) as resp:
+                    if resp.status == 201:
+                        data = await resp.json()
+                        checkout_url = data['data']['attributes']['url']
+                        keyboard.append([InlineKeyboardButton(text=f"💳 {prod['name']} - {prod['price_display']}", url=checkout_url)])
+                    else:
+                        print(f"Eroare LS: {await resp.text()}")
+            except Exception as e:
+                print(f"Eroare API: {e}")
 
-    # Activăm în baza de date
-    await extend_subscription(message.from_user.id, days_to_add)
-
-    await message.answer(
-        f"✅ **Plată Confirmată!**\n\n"
-        f"Ai activat planul **{plan_name}**.\n"
-        f"Vei primi semnale automat timp de {days_to_add} zile. Spor la pips! 🚀"
-    )
+    await message.answer("Alege opțiunea de plată:", reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
 
 @router.message(Command("stop"))
 async def cmd_stop(message: types.Message):
