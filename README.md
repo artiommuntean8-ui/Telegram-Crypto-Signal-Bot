@@ -1,14 +1,15 @@
-# 📈 Crypto Signal AI Bot
+# 🏆 Gold Signal AI Bot (XAUUSD)
 
-Un bot de Telegram avansat, construit în Python, care monitorizează piața criptomonedelor în timp real și trimite semnale de tranzacționare automate bazate pe analiză tehnică (RSI).
+Un bot de Telegram avansat, care monitorizează piața Aurului (XAUUSD) în timp real și trimite semnale de tranzacționare profesionale cu SL și TP multiplu.
 
 ## 🚀 Funcționalități
 
-- **Date Reale:** Se conectează la API-ul public Binance pentru a prelua prețul Bitcoin (BTC/USDT) în timp real.
-- **Analiză Tehnică:** Calculează automat indicatorul **RSI (Relative Strength Index)** pe un interval de 1 minut.
+- **Instrument:** Monitorizează XAUUSD (via PAXGUSDT pe Binance pentru date live gratuite).
+- **Analiză Tehnică:** RSI + SMA pe timeframe de 1 minut (Scalping).
 - **Semnale Automate:**
-  - **LONG (Cumpără):** Când RSI scade sub 30 (Supravândut).
-  - **SHORT (Vinde):** Când RSI crește peste 70 (Supra-cumpărat).
+  - **Buy:** RSI < 30.
+  - **Sell:** RSI > 70.
+  - Include **Entry Price, SL, TP1, TP2, TP3**.
 - **Management Utilizatori:** Sistem de abonare/dezabonare cu bază de date SQLite.
 - **Arhitectură Asincronă:** Folosește `aiogram` și `aiohttp` pentru performanță maximă (non-blocking).
 - **Securitate:** Token-ul și configurările sensibile sunt încărcate din variabile de mediu (`.env`).

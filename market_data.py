@@ -4,7 +4,7 @@ async def get_binance_data():
     """Descarcă ultimele 50 de lumânări pentru calcul SMA și RSI."""
     url = "https://api.binance.com/api/v3/klines"
     params = {
-        "symbol": "BTCUSDT",
+        "symbol": "PAXGUSDT",  # Folosim PAX Gold ca proxy pentru XAUUSD
         "interval": "1m",
         "limit": 50 
     }
@@ -42,10 +42,10 @@ def calculate_indicators(prices):
     return round(rsi, 2), round(sma, 2)
 
 async def get_market_analysis():
-    """Analizează piața și returnează verdictul."""
+    """Analizează XAUUSD și returnează semnale cu TP/SL."""
     prices = await get_binance_data()
     if not prices:
-        return {"error": "Nu pot conecta la Binance."}
+        return {"error": "Conexiune XAUUSD eșuată."}
     
     current_price = prices[-1]
     rsi, sma = calculate_indicators(prices)
@@ -53,16 +53,37 @@ async def get_market_analysis():
     if rsi is None:
         return {"error": "Date insuficiente."}
 
-    # Logica avansată LONG/SHORT
-    signal = "NEUTRAL (Așteaptă) ⚪"
+    # --- LOGICA XAUUSD (GOLD) ---
+    signal_type = "NEUTRAL"
+    sl = 0.0
+    tp1 = 0.0
+    tp2 = 0.0
+    tp3 = 0.0
+
+    # Setări distanță (ajustate pentru scalping pe Aur)
+    # SL aprox 3$ | TP1 2$ | TP2 5$ | TP3 9$
+    risk_factor = 0.0015  # 0.15% mișcare pentru SL
+
     if rsi < 30:
-        signal = "LONG (Cumpără) 🟢" if current_price > sma else "LONG RISCANT (Trend Scădere) ⚠️"
+        signal_type = "Buy"
+        sl = current_price - (current_price * risk_factor)
+        tp1 = current_price + (current_price * 0.0010) # Safe
+        tp2 = current_price + (current_price * 0.0025) # Risk Active
+        tp3 = current_price + (current_price * 0.0045) # Big Risk
     elif rsi > 70:
-        signal = "SHORT (Vinde) 🔴" if current_price < sma else "SHORT RISCANT (Trend Creștere) ⚠️"
+        signal_type = "Sell"
+        sl = current_price + (current_price * risk_factor)
+        tp1 = current_price - (current_price * 0.0010)
+        tp2 = current_price - (current_price * 0.0025)
+        tp3 = current_price - (current_price * 0.0045)
 
     return {
         "price": current_price,
         "rsi": rsi,
         "sma": sma,
-        "signal": signal
+        "signal": signal_type,
+        "sl": round(sl, 2),
+        "tp1": round(tp1, 2),
+        "tp2": round(tp2, 2),
+        "tp3": round(tp3, 2)
     }

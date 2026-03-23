@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 async def market_scanner(bot: Bot):
     """Rulează în fundal și caută semnale."""
-    logger.info("📡 Scanner-ul REAL Binance a pornit...")
+    logger.info("📡 Scanner-ul XAUUSD (Gold) a pornit...")
     
     # Ținem minte ultimul semnal ca să nu spamăm
     last_signal_type = None 
@@ -32,26 +32,28 @@ async def market_scanner(bot: Bot):
             signal_action = None
             verdict = analysis['signal']
             
-            # 2. Verificăm dacă verdictul s-a schimbat și e puternic
-            if "LONG" in verdict and last_signal_type != "BUY":
+            # 2. Verificăm dacă verdictul s-a schimbat
+            if verdict == "Buy" and last_signal_type != "Buy":
                 signal_action = verdict
-                last_signal_type = "BUY"
-            elif "SHORT" in verdict and last_signal_type != "SELL":
+                last_signal_type = "Buy"
+            elif verdict == "Sell" and last_signal_type != "Sell":
                 signal_action = verdict
-                last_signal_type = "SELL"
+                last_signal_type = "Sell"
             
             # Dacă nu e semnal, doar afișăm în consolă statusul
             if not signal_action:
-                logger.info(f"Monitorizare: {analysis['price']}$ | RSI={analysis['rsi']} | {verdict}")
+                logger.info(f"Gold: {analysis['price']} | RSI={analysis['rsi']} | {verdict}")
                 continue
 
             # 3. Construim mesajul
             message = (
-                f"🚨 **SEMNAL TRADING REAL**\n\n"
-                f"💎 **Simbol:** `BTC/USDT`\n"
-                f"⚡ **Acțiune:** {signal_action}\n"
-                f"💵 **Preț:** {analysis['price']}$\n"
-                f"📊 **Indicator:** RSI {analysis['rsi']}\n"
+                f"🏆 **XAUUSD (GOLD)**\n"
+                f"Signal: **{signal_action}** 🟢🔴\n"
+                f"Entry price: `{analysis['price']}`\n\n"
+                f"🎯 **TP 1(SAFE):** `{analysis['tp1']}`\n"
+                f"🎯 **TP 2(Risk active):** `{analysis['tp2']}`\n"
+                f"🎯 **TP 3(BIG RISK):** `{analysis['tp3']}`\n\n"
+                f"🛡️ **SL:** `{analysis['sl']}`"
             )
             
             # 4. Trimitem la toți userii activi
