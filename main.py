@@ -2,12 +2,9 @@
 import sys
 import asyncio
 import logging
-import hmac
-import hashlib
-from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.types import BufferedInputFile
-from config import BOT_TOKEN, PAIRS_CONFIG, LEMONSQUEEZY_WEBHOOK_SECRET, WEBHOOK_PORT
+from config import BOT_TOKEN, PAIRS_CONFIG
 from database import init_db, get_active_users, extend_subscription
 from handlers import router
 from market_data import get_market_analysis
@@ -15,40 +12,6 @@ from market_data import get_market_analysis
 # Configurare logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# --- LEMON SQUEEZY WEBHOOK HANDLER ---
-async def lemonsqueezy_webhook_handle(request):
-    # 1. Verificare semnătură (Securitate)
-    payload = await request.read()
-    signature = request.headers.get('X-Signature')
-    
-    if not signature or not LEMONSQUEEZY_WEBHOOK_SECRET:
-        return web.Response(status=401)
-
-    digest = hmac.new(LEMONSQUEEZY_WEBHOOK_SECRET.encode(), payload, hashlib.sha256).hexdigest()
-    
-    if not hmac.compare_digest(digest, signature):
-        logger.error("❌ Semnătură webhook invalidă!")
-        return web.Response(status=401)
-
-    # 2. Procesare date
-    data = await request.json()
-    event_name = data.get('meta', {}).get('event_name')
-
-    if event_name == 'order_created':
-        attributes = data['data']['attributes']
-        custom_data = data['meta']['custom_data']
-        
-        telegram_id = custom_data.get('user_id')
-        # În producție, poți calcula zilele în funcție de variant_id
-        # Aici punem default 30 de zile pentru exemplu
-        days = 30 
-        
-        if telegram_id:
-            await extend_subscription(int(telegram_id), days)
-            logger.info(f"✅ Plată Lemon Squeezy confirmată pentru {telegram_id}")
-
-    return web.Response(status=200)
 
 async def market_scanner(bot: Bot):
     """Rulează în fundal și caută semnale."""
@@ -132,16 +95,7 @@ async def main():
     # 4. Pornire scanner în background
     asyncio.create_task(market_scanner(bot))
     
-    # 5. Pornire Server Webhook (pentru Stripe)
-    app = web.Application()
-    app.router.add_post('/lemonsqueezy_webhook', lemonsqueezy_webhook_handle)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', WEBHOOK_PORT)
-    await site.start()
-    logger.info(f"🌍 Webhook Server ascultă pe portul {WEBHOOK_PORT}")
-
-    # 6. Start bot polling
+    # 5. Start bot polling
     logger.info("Botul a pornit! 🚀")
     await dp.start_polling(bot)
 

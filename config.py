@@ -11,14 +11,35 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 # Cheia de criptare pentru datele din baza de date
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 
-# Configurare Lemon Squeezy
-LEMONSQUEEZY_API_KEY = os.getenv("LEMONSQUEEZY_API_KEY")
-LEMONSQUEEZY_STORE_ID = os.getenv("LEMONSQUEEZY_STORE_ID")
-LEMONSQUEEZY_WEBHOOK_SECRET = os.getenv("LEMONSQUEEZY_WEBHOOK_SECRET")
-WEBHOOK_PORT = int(os.getenv("WEBHOOK_PORT", 8080)) # Portul pe care ascultă serverul
+# Adresa portofelului tău TON (unde primești banii)
+# Asigură-te că adresa de mai jos este cea corectă
+TON_WALLET_ADDRESS = os.getenv("TON_WALLET_ADDRESS", "UQA4fTmPZAVsOGlu7-5HBpBpNzHWkQ5aX4VSrCIwvOT1Y37Q")
 
-# Moneda pentru plăți (USD, EUR, RON). 
-CURRENCY = "USD"
+# Link-ul tău de Telegram pentru suport (unde trimit userii dovada plății)
+ADMIN_LINK = os.getenv("ADMIN_LINK", "https://t.me/username_tau")
+
+# Configurare Produse (Prețuri în USD și echivalent TON)
+# Aproximare: 1 TON ≈ 5 USD (Poți ajusta manual)
+TON_PRODUCTS = {
+    "weekly": {
+        "name": "Abonament Săptămânal",
+        "price_usd": 15,
+        "price_ton": 3,
+        "days": 7
+    },
+    "monthly": {
+        "name": "Abonament Lunar",
+        "price_usd": 45,
+        "price_ton": 9,
+        "days": 30
+    },
+    "yearly": {
+        "name": "Abonament Anual",
+        "price_usd": 400,
+        "price_ton": 80,
+        "days": 365
+    }
+}
 
 # Numele fișierului de bază de date
 DB_NAME = "trading_bot.db"
