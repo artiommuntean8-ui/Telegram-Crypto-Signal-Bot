@@ -29,6 +29,7 @@ async def market_scanner(bot: Bot):
                 analysis = await get_market_analysis(symbol, settings['risk'])
                 
                 if "error" in analysis:
+                    logger.warning(f"Scanner skip {symbol}: {analysis['error']}")
                     continue
                 
                 signal_action = None

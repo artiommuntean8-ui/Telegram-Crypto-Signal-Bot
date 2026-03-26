@@ -135,7 +135,7 @@ async def cmd_status(message: types.Message):
     for symbol, settings in PAIRS_CONFIG.items():
         data = await get_market_analysis(symbol, settings['risk'])
         if "error" in data:
-            await message.answer(f"❌ **{settings['name']}**: Eroare date.")
+            await message.answer(f"❌ **{settings['name']}**: {data['error']}")
             continue
             
         icon = "🟢" if data['signal'] == "Buy" else "🔴" if data['signal'] == "Sell" else "⚪"
