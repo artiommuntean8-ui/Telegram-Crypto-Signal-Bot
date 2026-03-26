@@ -1,4 +1,5 @@
-import aiohttp
+import yfinance as yf
+import asyncio
 import matplotlib.pyplot as plt
 import io
 import logging
@@ -9,41 +10,18 @@ logger = logging.getLogger(__name__)
 plt.switch_backend('Agg')
 
 async def get_binance_data(symbol):
-    """Descarcă ultimele 50 de lumânări pentru calcul SMA și RSI."""
-    # Endpoint-uri multiple pentru redundanță
-    urls = [
-        "https://api.binance.com/api/v3/klines",
-        "https://api1.binance.com/api/v3/klines",
-        "https://api2.binance.com/api/v3/klines",
-        "https://api3.binance.com/api/v3/klines"
-    ]
-    params = {
-        "symbol": symbol,
-        "interval": "1m",
-        "limit": 50 
-    }
-    
-    async with aiohttp.ClientSession() as session:
-        blocked_count = 0
-        for url in urls:
-            try:
-                async with session.get(url, params=params, timeout=5) as response:
-                    if response.status == 200:
-                        data = await response.json()
-                        return [float(candle[4]) for candle in data]
-                    elif response.status == 451:
-                        blocked_count += 1
-                        logger.warning(f"⚠️ Binance blochează regiunea serverului tău la {url} (Eroare 451).")
-                    else:
-                        logger.error(f"❌ Endpoint {url} a returnat status {response.status}")
-            except Exception as e:
-                logger.debug(f"⚠️ Conexiune eșuată la {url}: {e}")
-                continue
-        
-        if blocked_count == len(urls):
-            logger.error("🚫 TOATE endpoint-urile Binance sunt blocate. MUTĂ serverul în EUROPA (ex: Frankfurt).")
-
-    return []
+    """Descarcă datele XAUUSD folosind Yahoo Finance (ocolind blocajele Binance)."""
+    # Simbolul pentru Gold Spot pe Yahoo Finance este XAUUSD=X
+    ticker_symbol = "XAUUSD=X" if symbol == "XAUUSD" else symbol
+    try:
+        # yfinance este o bibliotecă sincronă, o rulăm în thread-ul separat pentru a nu bloca botul
+        df = await asyncio.to_thread(yf.download, tickers=ticker_symbol, period="1d", interval="1m", progress=False)
+        if df.empty:
+            return []
+        return df['Close'].tolist()
+    except Exception as e:
+        logger.error(f"❌ Eroare la preluarea datelor Yahoo Finance: {e}")
+        return []
 
 def calculate_indicators(prices):
     """Calculează RSI și SMA (Simple Moving Average)."""
