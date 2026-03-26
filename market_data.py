@@ -10,7 +10,7 @@ plt.switch_backend('Agg')
 
 async def get_binance_data(symbol):
     """Descarcă ultimele 50 de lumânări pentru calcul SMA și RSI."""
-    # Încercăm multiple endpoint-uri Binance pentru a evita blocările regionale (GCP/Cloud)
+    # Endpoint-uri multiple pentru redundanță
     urls = [
         "https://api.binance.com/api/v3/klines",
         "https://api1.binance.com/api/v3/klines",
@@ -24,6 +24,7 @@ async def get_binance_data(symbol):
     }
     
     async with aiohttp.ClientSession() as session:
+        blocked_count = 0
         for url in urls:
             try:
                 async with session.get(url, params=params, timeout=5) as response:
@@ -31,13 +32,17 @@ async def get_binance_data(symbol):
                         data = await response.json()
                         return [float(candle[4]) for candle in data]
                     elif response.status == 451:
-                        logger.warning(f"⚠️ Endpoint {url} blocat regional (451 Legal).")
+                        blocked_count += 1
+                        logger.warning(f"⚠️ Binance blochează regiunea serverului tău la {url} (Eroare 451).")
                     else:
                         logger.error(f"❌ Endpoint {url} a returnat status {response.status}")
             except Exception as e:
-                logger.warning(f"⚠️ Eroare conexiune la {url}: {e}")
+                logger.debug(f"⚠️ Conexiune eșuată la {url}: {e}")
                 continue
-                
+        
+        if blocked_count == len(urls):
+            logger.error("🚫 TOATE endpoint-urile Binance sunt blocate. MUTĂ serverul în EUROPA (ex: Frankfurt).")
+
     return []
 
 def calculate_indicators(prices):
@@ -92,7 +97,7 @@ async def get_market_analysis(symbol, risk_factor):
     """Analizează simbolul dat și returnează semnale cu TP/SL."""
     prices = await get_binance_data(symbol)
     if not prices:
-        return {"error": f"Conexiune {symbol} eșuată."}
+        return {"error": "Acces interzis de Binance (Regiune blocată)."}
     
     current_price = prices[-1]
     rsi, sma = calculate_indicators(prices)
