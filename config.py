@@ -24,19 +24,19 @@ TON_PRODUCTS = {
     "weekly": {
         "name": "Abonament Săptămânal",
         "price_usd": 15,
-        "price_ton": 3,
+        "price_ton": 11.62,
         "days": 7
     },
     "monthly": {
         "name": "Abonament Lunar",
         "price_usd": 45,
-        "price_ton": 9,
+        "price_ton": 34.86,
         "days": 30
     },
     "yearly": {
         "name": "Abonament Anual",
         "price_usd": 400,
-        "price_ton": 80,
+        "price_ton": 309.84,
         "days": 365
     }
 }
