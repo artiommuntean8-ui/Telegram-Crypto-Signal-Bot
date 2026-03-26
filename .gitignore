@@ -5,8 +5,4 @@ __pycache__/
 # Fișiere de configurare și baze de date (SECRETE!)
 .env
 trading_bot.db
-
-# Configurări de sistem (Specifice serverului)
-goldbot.service
-*.service
 goldbot.service
