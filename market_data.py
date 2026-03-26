@@ -18,7 +18,8 @@ async def get_binance_data(symbol):
         df = await asyncio.to_thread(yf.download, tickers=ticker_symbol, period="1d", interval="1m", progress=False)
         if df.empty:
             return []
-        return df['Close'].tolist()
+        # Convertim coloana Close în listă, asigurându-ne că aplatizăm datele (în caz de DataFrame cu MultiIndex)
+        return df['Close'].values.flatten().tolist()
     except Exception as e:
         logger.error(f"❌ Eroare la preluarea datelor Yahoo Finance: {e}")
         return []
