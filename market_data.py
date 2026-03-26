@@ -2,6 +2,8 @@ import aiohttp
 import matplotlib.pyplot as plt
 import io
 
+# Setăm backend-ul 'Agg' la nivel de modul pentru execuție headless (server)
+plt.switch_backend('Agg')
 
 async def get_binance_data(symbol):
     """Descarcă ultimele 50 de lumânări pentru calcul SMA și RSI."""
@@ -46,9 +48,6 @@ def calculate_indicators(prices):
 
 def generate_chart_image(symbol, prices, sma_value):
     """Generează un grafic simplu (Preț vs SMA) și îl returnează ca bytes."""
-    # Setăm backend-ul 'Agg' pentru a nu încerca să deschidă ferestre (server mode)
-    plt.switch_backend('Agg')
-    
     plt.figure(figsize=(10, 5))
     
     # Plotăm prețurile (ultimele 50 lumânări)

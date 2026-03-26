@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import String, Integer, Boolean, DateTime, Float, select, update, TypeDecorator, or_
+from sqlalchemy.exc import IntegrityError
 from cryptography.fernet import Fernet
 from config import DB_NAME, ENCRYPTION_KEY, ALLOWED_USERS
 
@@ -72,19 +73,23 @@ async def init_db():
 
 async def add_user(tg_id: int, username: str):
     async with AsyncSessionLocal() as session:
-        result = await session.execute(select(User).where(User.telegram_id == tg_id))
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            new_user = User(telegram_id=tg_id, username=username, is_active=True)
-            session.add(new_user)
-            await session.commit()
-            return "new"
-        elif not user.is_active:
-            user.is_active = True
-            await session.commit()
-            return "reactivated"
-        return "exists"
+        try:
+            result = await session.execute(select(User).where(User.telegram_id == tg_id))
+            user = result.scalar_one_or_none()
+            
+            if not user:
+                new_user = User(telegram_id=tg_id, username=username, is_active=True)
+                session.add(new_user)
+                await session.commit()
+                return "new"
+            elif not user.is_active:
+                user.is_active = True
+                await session.commit()
+                return "reactivated"
+            return "exists"
+        except IntegrityError:
+            await session.rollback()
+            return "exists"
 
 async def extend_subscription(tg_id: int, days: int):
     """Prelungește abonamentul utilizatorului cu numărul de zile specificat."""
