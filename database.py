@@ -1,6 +1,6 @@
 # database.py
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import String, Integer, Boolean, DateTime, Float, select, update, TypeDecorator, or_
@@ -54,7 +54,7 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Data când expiră abonamentul (Null = Fără abonament)
     subscription_expiry: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    joined_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    joined_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 class SignalLog(Base):
     __tablename__ = "signals"
@@ -63,7 +63,7 @@ class SignalLog(Base):
     pair: Mapped[str] = mapped_column(String)
     action: Mapped[str] = mapped_column(String)
     price: Mapped[float] = mapped_column(Float)
-    timestamp: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    timestamp: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 # --- FUNCȚII AJUTĂTOARE ---
 async def init_db():
@@ -93,7 +93,7 @@ async def extend_subscription(tg_id: int, days: int):
         user = result.scalar_one_or_none()
         
         if user:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             # Dacă are deja abonament valid, adăugăm la data existentă
             if user.subscription_expiry and user.subscription_expiry > now:
                 user.subscription_expiry += timedelta(days=days)
@@ -113,7 +113,7 @@ async def deactivate_user(tg_id: int):
 async def get_active_users():
     """Returnează userii cu abonament valid SAU care sunt în lista de admini (whitelist)."""
     async with AsyncSessionLocal() as session:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         # Selectăm userii care sunt activi ȘI (au abonament valid SAU sunt în lista allowed_users)
         stmt = select(User.telegram_id).where(
             (User.is_active == True) & 
