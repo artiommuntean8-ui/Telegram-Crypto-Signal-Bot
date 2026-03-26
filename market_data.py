@@ -11,8 +11,8 @@ plt.switch_backend('Agg')
 
 async def get_binance_data(symbol):
     """Descarcă datele XAUUSD folosind Yahoo Finance (ocolind blocajele Binance)."""
-    # Simbolul pentru Gold Spot pe Yahoo Finance este XAUUSD=X
-    ticker_symbol = "XAUUSD=X" if symbol == "XAUUSD" else symbol
+    # GC=F (Gold Futures) este mult mai stabil pentru date la 1 minut pe Yahoo Finance
+    ticker_symbol = "GC=F" if symbol == "XAUUSD" else symbol
     try:
         # yfinance este o bibliotecă sincronă, o rulăm în thread-ul separat pentru a nu bloca botul
         df = await asyncio.to_thread(yf.download, tickers=ticker_symbol, period="1d", interval="1m", progress=False)
@@ -75,7 +75,7 @@ async def get_market_analysis(symbol, risk_factor):
     """Analizează simbolul dat și returnează semnale cu TP/SL."""
     prices = await get_binance_data(symbol)
     if not prices:
-        return {"error": "Acces interzis de Binance (Regiune blocată)."}
+        return {"error": "Nu s-au putut prelua datele de la furnizorul de piață."}
     
     current_price = prices[-1]
     rsi, sma = calculate_indicators(prices)
