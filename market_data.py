@@ -1,24 +1,34 @@
 import aiohttp
 import matplotlib.pyplot as plt
 import io
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Setăm backend-ul 'Agg' la nivel de modul pentru execuție headless (server)
 plt.switch_backend('Agg')
 
 async def get_binance_data(symbol):
     """Descarcă ultimele 50 de lumânări pentru calcul SMA și RSI."""
-    url = "https://api.binance.com/api/v3/klines"
+    # api1.binance.com este adesea mai stabil pentru serverele din cloud
+    url = "https://api1.binance.com/api/v3/klines"
     params = {
         "symbol": symbol,
         "interval": "1m",
         "limit": 50 
     }
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as response:
-            if response.status == 200:
-                data = await response.json()
-                return [float(candle[4]) for candle in data] # Close prices
-            return []
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params, timeout=10) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return [float(candle[4]) for candle in data]
+                else:
+                    logger.error(f"❌ Binance API Error {response.status} pentru {symbol}")
+                    return []
+    except Exception as e:
+        logger.error(f"❌ Eroare rețea la preluarea datelor XAUUSD: {e}")
+        return []
 
 def calculate_indicators(prices):
     """Calculează RSI și SMA (Simple Moving Average)."""

@@ -34,10 +34,10 @@ async def market_scanner(bot: Bot):
                 
                 signal_action = None
                 verdict = analysis['signal']
-                
-                # Log periodic (Afișăm mereu în terminal pentru monitorizare)
-                logger.info(f"{settings['name']}: {analysis['price']} | RSI={analysis['rsi']} | {verdict}")
 
+                # Log periodic (Acum va apărea mereu în terminal la fiecare 10 secunde)
+                logger.info(f"📊 {settings['name']} | Preț: {analysis['price']} | RSI: {analysis['rsi']} | Verdict: {verdict}")
+                
                 # 2. Verificăm semnalul (CU filtru anti-spam)
                 if verdict == "Buy" and last_signal_types[symbol] != "Buy":
                     signal_action = verdict

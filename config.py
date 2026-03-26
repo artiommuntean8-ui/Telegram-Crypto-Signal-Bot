@@ -52,5 +52,6 @@ ALLOWED_USERS = [int(x.strip()) for x in raw_allowed.split(",") if x.strip()]
 # Configurare Perechi Monitorizate
 # risk: Procentul pentru SL (0.0015 = 0.15% pentru Gold, 0.01 = 1% pentru Crypto)
 PAIRS_CONFIG = {
-    "PAXGUSDT": {"name": "Gold (XAUUSD)", "risk": 0.0015}
+    # Folosim PAXG ca sursă de date, dar afișăm XAUUSD
+    "PAXGUSDT": {"name": "XAUUSD", "risk": 0.0015}
 }
