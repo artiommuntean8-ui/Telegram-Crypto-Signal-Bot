@@ -10,25 +10,35 @@ plt.switch_backend('Agg')
 
 async def get_binance_data(symbol):
     """Descarcă ultimele 50 de lumânări pentru calcul SMA și RSI."""
-    # api1.binance.com este adesea mai stabil pentru serverele din cloud
-    url = "https://api1.binance.com/api/v3/klines"
+    # Încercăm multiple endpoint-uri Binance pentru a evita blocările regionale (GCP/Cloud)
+    urls = [
+        "https://api.binance.com/api/v3/klines",
+        "https://api1.binance.com/api/v3/klines",
+        "https://api2.binance.com/api/v3/klines",
+        "https://api3.binance.com/api/v3/klines"
+    ]
     params = {
         "symbol": symbol,
         "interval": "1m",
         "limit": 50 
     }
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params, timeout=10) as response:
-                if response.status == 200:
-                    data = await response.json()
-                    return [float(candle[4]) for candle in data]
-                else:
-                    logger.error(f"❌ Binance API Error {response.status} pentru {symbol}")
-                    return []
-    except Exception as e:
-        logger.error(f"❌ Eroare rețea la preluarea datelor XAUUSD: {e}")
-        return []
+    
+    async with aiohttp.ClientSession() as session:
+        for url in urls:
+            try:
+                async with session.get(url, params=params, timeout=5) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        return [float(candle[4]) for candle in data]
+                    elif response.status == 451:
+                        logger.warning(f"⚠️ Endpoint {url} blocat regional (451 Legal).")
+                    else:
+                        logger.error(f"❌ Endpoint {url} a returnat status {response.status}")
+            except Exception as e:
+                logger.warning(f"⚠️ Eroare conexiune la {url}: {e}")
+                continue
+                
+    return []
 
 def calculate_indicators(prices):
     """Calculează RSI și SMA (Simple Moving Average)."""
