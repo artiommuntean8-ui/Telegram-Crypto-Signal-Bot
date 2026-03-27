@@ -11,15 +11,26 @@ plt.switch_backend('Agg')
 
 async def get_binance_data(symbol):
     """Descarcă datele XAUUSD folosind Yahoo Finance (ocolind blocajele Binance)."""
-    # GC=F (Gold Futures) este mult mai stabil pentru date la 1 minut pe Yahoo Finance
-    ticker_symbol = "GC=F" if symbol == "XAUUSD" else symbol
+    # PAXG-USD (Pax Gold) urmărește prețul aurului spot 1:1.
+    # Spre deosebire de GC=F (Futures), PAXG are de obicei date Real-Time pe Yahoo Finance.
+    ticker_symbol = "PAXG-USD" if symbol == "XAUUSD" else symbol
+    
     try:
         # yfinance este o bibliotecă sincronă, o rulăm în thread-ul separat pentru a nu bloca botul
-        df = await asyncio.to_thread(yf.download, tickers=ticker_symbol, period="1d", interval="1m", progress=False)
+        df = await asyncio.to_thread(yf.download, tickers=ticker_symbol, period="1d", interval="1m", progress=False, auto_adjust=True)
+        
         if df.empty:
+            logger.warning(f"⚠️ Nu am primit date pentru {ticker_symbol}")
             return []
-        # Convertim coloana Close în listă, asigurându-ne că aplatizăm datele (în caz de DataFrame cu MultiIndex)
-        return df['Close'].values.flatten().tolist()
+
+        # Verificăm ora ultimei lumânări pentru a detecta delay-ul
+        last_candle_time = df.index[-1]
+        logger.info(f"✅ Date actualizate pentru {symbol} la ora: {last_candle_time}")
+
+        # Extragerea prețurilor și asigurarea formatului corect
+        close_prices = df['Close'].values.flatten().tolist()
+        return [round(float(p), 2) for p in close_prices]
+
     except Exception as e:
         logger.error(f"❌ Eroare la preluarea datelor Yahoo Finance: {e}")
         return []
