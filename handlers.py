@@ -3,7 +3,7 @@ from aiogram import Router, types, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import BufferedInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from database import add_user, deactivate_user, extend_subscription, get_active_users
-from market_data import get_market_analysis
+from market_data import get_market_analysis, is_market_open
 from config import ALLOWED_USERS, PAIRS_CONFIG, TON_WALLET_ADDRESS, TON_PRODUCTS, ADMIN_LINK
 
 # Router-ul gestionează rutele (comenzile)
@@ -128,6 +128,10 @@ async def cmd_status(message: types.Message):
     active_users_ids = await get_active_users()
     if message.from_user.id not in active_users_ids:
         await message.answer("⛔ **Abonament Expirat sau Inexistent.**\nFolosește /plans pentru a te abona.")
+        return
+
+    if not is_market_open():
+        await message.answer("😴 **Piața este închisă momentan.**\nXAUUSD nu se tranzacționează în weekend sau între orele 23:00 - 00:00.")
         return
 
     await message.answer("🔍 Analizez piața XAUUSD...")

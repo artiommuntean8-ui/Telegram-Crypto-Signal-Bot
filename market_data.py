@@ -3,11 +3,23 @@ import asyncio
 import matplotlib.pyplot as plt
 import io
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
 # Setăm backend-ul 'Agg' la nivel de modul pentru execuție headless (server)
 plt.switch_backend('Agg')
+
+def is_market_open():
+    """Verifică dacă piața XAUUSD este deschisă."""
+    now = datetime.now()
+    # Sâmbătă (5) și Duminică (6) piața este închisă
+    if now.weekday() >= 5:
+        return False
+    # Pauza zilnică între 23:00 și 00:00
+    if now.hour == 23:
+        return False
+    return True
 
 async def get_binance_data(symbol):
     """Descarcă datele XAUUSD folosind Yahoo Finance (ocolind blocajele Binance)."""

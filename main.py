@@ -7,7 +7,7 @@ from aiogram.types import BufferedInputFile
 from config import BOT_TOKEN, PAIRS_CONFIG
 from database import init_db, get_active_users, extend_subscription
 from handlers import router
-from market_data import get_market_analysis
+from market_data import get_market_analysis, is_market_open
 
 # Configurare logging
 logging.basicConfig(level=logging.INFO)
@@ -21,6 +21,11 @@ async def market_scanner(bot: Bot):
     last_signal_types = {pair: None for pair in PAIRS_CONFIG}
     
     while True:
+        if not is_market_open():
+            # Dacă piața e închisă, așteptăm un minut și verificăm din nou
+            await asyncio.sleep(60)
+            continue
+            
         await asyncio.sleep(10)  # Verificăm piața la fiecare 10 secunde
         
         for symbol, settings in PAIRS_CONFIG.items():
