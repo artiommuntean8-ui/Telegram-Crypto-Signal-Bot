@@ -3,7 +3,7 @@ import asyncio
 import matplotlib.pyplot as plt
 import io
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -13,12 +13,12 @@ plt.switch_backend('Agg')
 
 def is_market_open():
     """Verifică dacă piața XAUUSD este deschisă."""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     # Sâmbătă (5) și Duminică (6) piața este închisă
     if now.weekday() >= 5:
         return False
-    # Pauza zilnică între 23:00 și 00:00
-    if now.hour == 23:
+    # Pauza zilnică XAUUSD (22:00 - 23:00 UTC / 17:00 - 18:00 EST)
+    if now.hour == 22:
         return False
     return True
 
@@ -29,11 +29,16 @@ async def get_binance_data(symbol):
     
     try:
         # yfinance este o bibliotecă sincronă, o rulăm în thread-ul separat pentru a nu bloca botul
-        df = await asyncio.to_thread(yf.download, tickers=ticker_symbol, period="1d", interval="1m", progress=False, auto_adjust=True)
+        # Folosim period="5d" pentru o mai bună stabilitate a datelor de 1 minut
+        df = await asyncio.to_thread(yf.download, tickers=ticker_symbol, period="5d", interval="1m", progress=False, auto_adjust=True)
         
-        if df.empty:
+        if df is None or df.empty:
             logger.warning(f"⚠️ Nu am primit date pentru {ticker_symbol}")
             return []
+
+        # Gestionare MultiIndex (pentru compatibilitate cu versiunile noi de yfinance)
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
 
         # Verificăm ora ultimei lumânări pentru a detecta delay-ul
         last_candle_time = df.index[-1].to_pydatetime()
