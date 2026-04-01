@@ -22,10 +22,10 @@ def is_market_open():
         return False
     return True
 
-async def get_binance_data(symbol):
+async def get_forex_data(symbol):
     """
-    Descarcă datele XAUUSD în timp real folosind Twelve Data API.
-    Acest lucru elimină delay-ul de 15 minute de pe Yahoo și oferă prețul Spot (ca pe MetaTrader).
+    Preluare prețuri XAU/USD (Spot Gold) în timp real via Twelve Data.
+    Aceasta este sursa principală de tip Forex, identică cu MetaTrader.
     """
     if not TWELVE_DATA_API_KEY or TWELVE_DATA_API_KEY == "YOUR_FREE_API_KEY":
         logger.error("❌ TWELVE_DATA_API_KEY nu este configurat în config.py sau .env!")
@@ -111,7 +111,7 @@ def generate_chart_image(symbol, prices, sma_value):
 
 async def get_market_analysis(symbol, risk_factor):
     """Analizează simbolul dat și returnează semnale cu TP/SL."""
-    prices = await get_binance_data(symbol)
+    prices = await get_forex_data(symbol)
     if not prices:
         return {"error": "Nu s-au putut prelua datele de la furnizorul de piață."}
     
