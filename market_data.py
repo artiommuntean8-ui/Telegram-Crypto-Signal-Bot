@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import io
 import logging
 from datetime import datetime
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +36,14 @@ async def get_binance_data(symbol):
             return []
 
         # Verificăm ora ultimei lumânări pentru a detecta delay-ul
-        last_candle_time = df.index[-1]
-        logger.info(f"✅ Date actualizate pentru {symbol} la ora: {last_candle_time}")
+        last_candle_time = df.index[-1].to_pydatetime()
+        now = datetime.now(last_candle_time.tzinfo)
+        delay_minutes = int((now - last_candle_time).total_seconds() / 60)
+        
+        logger.info(f"✅ {symbol} | Preț: {df['Close'].iloc[-1]:.2f} | Delay: {delay_minutes} min | Ora Date: {last_candle_time.strftime('%H:%M:%S')}")
+        
+        if delay_minutes > 5:
+            logger.warning(f"⚠️ Atenție: Datele pentru {symbol} au o întârziere de {delay_minutes} minute!")
 
         # Extragerea prețurilor și asigurarea formatului corect
         close_prices = df['Close'].values.flatten().tolist()
