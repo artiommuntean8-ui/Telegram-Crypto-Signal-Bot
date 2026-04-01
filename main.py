@@ -26,7 +26,8 @@ async def market_scanner(bot: Bot):
             await asyncio.sleep(60)
             continue
             
-        await asyncio.sleep(10)  # Verificăm piața la fiecare 10 secunde
+        # Verificăm la 20 secunde pentru a nu depăși limita Twelve Data Free (8 req/min)
+        await asyncio.sleep(20)  
         
         for symbol, settings in PAIRS_CONFIG.items():
             try:

@@ -8,6 +8,9 @@ load_dotenv()
 # Înlocuiește cu token-ul primit de la @BotFather
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
+# API Key pentru Twelve Data (Obține-l gratuit de pe twelvedata.com)
+TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY", "YOUR_FREE_API_KEY")
+
 # Cheia de criptare pentru datele din baza de date
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 

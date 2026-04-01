@@ -1,10 +1,10 @@
-import yfinance as yf
+import aiohttp
 import asyncio
 import matplotlib.pyplot as plt
 import io
 import logging
 from datetime import datetime, timezone
-import pandas as pd
+from config import TWELVE_DATA_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -23,42 +23,42 @@ def is_market_open():
     return True
 
 async def get_binance_data(symbol):
-    """Descarcă datele XAUUSD folosind Yahoo Finance (ocolind blocajele Binance)."""
-    # GC=F (Gold Futures) este mai precis pentru prețul aurului real (XAUUSD) pe Yahoo Finance
-    ticker_symbol = "GC=F" if symbol == "XAUUSD" else symbol
-    
+    """
+    Descarcă datele XAUUSD în timp real folosind Twelve Data API.
+    Acest lucru elimină delay-ul de 15 minute de pe Yahoo și oferă prețul Spot (ca pe MetaTrader).
+    """
+    if not TWELVE_DATA_API_KEY or TWELVE_DATA_API_KEY == "YOUR_FREE_API_KEY":
+        logger.error("❌ TWELVE_DATA_API_KEY nu este configurat în config.py sau .env!")
+        return []
+
+    # Twelve Data folosește formatul XAU/USD pentru Aur Spot
+    td_symbol = "XAU/USD" if symbol == "XAUUSD" else symbol
+    url = f"https://api.twelvedata.com/time_series?symbol={td_symbol}&interval=1min&outputsize=50&apikey={TWELVE_DATA_API_KEY}"
+
     try:
-        # yfinance este o bibliotecă sincronă, o rulăm în thread-ul separat pentru a nu bloca botul
-        # Folosim period="5d" pentru o mai bună stabilitate a datelor de 1 minut
-        df = await asyncio.to_thread(yf.download, tickers=ticker_symbol, period="5d", interval="1m", progress=False, auto_adjust=True)
-        
-        if df is None or df.empty:
-            logger.warning(f"⚠️ Nu am primit date pentru {ticker_symbol}")
-            return []
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as response:
+                if response.status != 200:
+                    logger.error(f"❌ Twelve Data API Error: {response.status}")
+                    return []
+                
+                data = await response.json()
+                
+                if "values" not in data:
+                    logger.error(f"❌ Twelve Data Error: {data.get('message', 'Check API Key')}")
+                    return []
 
-        # Gestionare MultiIndex (pentru compatibilitate cu versiunile noi de yfinance)
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.get_level_values(0)
-
-        # Extragem ultimul preț ca număr (float) pentru a evita erorile de formatare
-        current_price_scalar = float(df['Close'].values.flatten()[-1])
-
-        # Verificăm ora ultimei lumânări pentru a detecta delay-ul
-        last_candle_time = df.index[-1].to_pydatetime()
-        now = datetime.now(last_candle_time.tzinfo)
-        delay_minutes = int((now - last_candle_time).total_seconds() / 60)
-        
-        logger.info(f"✅ {symbol} | Preț: {current_price_scalar:.2f} | Delay: {delay_minutes} min | Ora Date: {last_candle_time.strftime('%H:%M:%S')}")
-        
-        if delay_minutes > 5:
-            logger.warning(f"⚠️ Atenție: Datele pentru {symbol} au o întârziere de {delay_minutes} minute!")
-
-        # Extragerea prețurilor și asigurarea formatului corect
-        close_prices = df['Close'].values.flatten().tolist()
-        return [round(float(p), 2) for p in close_prices]
+                # Twelve Data returnează cele mai noi date primele, deci inversăm lista
+                prices = [float(item['close']) for item in data['values']]
+                prices.reverse()
+                
+                current_price = prices[-1]
+                logger.info(f"✅ {symbol} | Preț Real-Time (Spot): {current_price:.2f}")
+                
+                return prices
 
     except Exception as e:
-        logger.error(f"❌ Eroare la preluarea datelor Yahoo Finance: {e}")
+        logger.error(f"❌ Eroare la preluarea datelor Twelve Data: {e}")
         return []
 
 def calculate_indicators(prices):
