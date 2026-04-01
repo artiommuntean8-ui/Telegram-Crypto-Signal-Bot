@@ -26,8 +26,11 @@ async def market_scanner(bot: Bot):
             await asyncio.sleep(60)
             continue
             
-        # Verificăm la 20 secunde pentru a nu depăși limita Twelve Data Free (8 req/min)
-        await asyncio.sleep(20)  
+        # Twelve Data Free are o limită de 800 de cereri pe zi.
+        # Pentru a rula 24/7 (23h de piață deschisă), trebuie să așteptăm ~110 secunde.
+        # 82.800 secunde (23h) / 800 cereri = 103.5 secunde/cerere.
+        # Folosim 110 secunde pentru a fi în siguranță.
+        await asyncio.sleep(110)  
         
         for symbol, settings in PAIRS_CONFIG.items():
             try:

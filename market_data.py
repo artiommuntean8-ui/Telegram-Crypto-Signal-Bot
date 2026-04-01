@@ -45,7 +45,10 @@ async def get_forex_data(symbol):
                 data = await response.json()
                 
                 if "values" not in data:
-                    logger.error(f"❌ Twelve Data Error: {data.get('message', 'Check API Key')}")
+                    api_message = data.get('message', 'Check API Key')
+                    if "credits" in api_message.lower():
+                        logger.error("❌ LIMITĂ ZILNICĂ ATINSĂ: Twelve Data Free permite doar 800 cereri/zi. Mărește intervalul de scanare în main.py!")
+                    logger.error(f"❌ Twelve Data Error: {api_message}")
                     return []
 
                 # Twelve Data returnează cele mai noi date primele, deci inversăm lista
