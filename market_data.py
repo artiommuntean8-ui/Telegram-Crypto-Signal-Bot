@@ -40,12 +40,15 @@ async def get_binance_data(symbol):
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
 
+        # Extragem ultimul preț ca număr (float) pentru a evita erorile de formatare
+        current_price_scalar = float(df['Close'].values.flatten()[-1])
+
         # Verificăm ora ultimei lumânări pentru a detecta delay-ul
         last_candle_time = df.index[-1].to_pydatetime()
         now = datetime.now(last_candle_time.tzinfo)
         delay_minutes = int((now - last_candle_time).total_seconds() / 60)
         
-        logger.info(f"✅ {symbol} | Preț: {df['Close'].iloc[-1]:.2f} | Delay: {delay_minutes} min | Ora Date: {last_candle_time.strftime('%H:%M:%S')}")
+        logger.info(f"✅ {symbol} | Preț: {current_price_scalar:.2f} | Delay: {delay_minutes} min | Ora Date: {last_candle_time.strftime('%H:%M:%S')}")
         
         if delay_minutes > 5:
             logger.warning(f"⚠️ Atenție: Datele pentru {symbol} au o întârziere de {delay_minutes} minute!")
