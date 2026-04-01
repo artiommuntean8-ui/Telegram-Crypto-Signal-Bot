@@ -116,6 +116,35 @@ async def cmd_activate(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Eroare la activare: {str(e)}")
 
+@router.message(Command("messageall"))
+async def cmd_message_all(message: types.Message):
+    """
+    Comandă pentru Admin: /messageall <text>
+    Trimite un mesaj global tuturor utilizatorilor activi.
+    """
+    if message.from_user.id not in ALLOWED_USERS:
+        return
+
+    # Extragem textul de după comandă
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        await message.answer("❌ Format incorect. Folosește: `/messageall Mesajul tău aici`")
+        return
+
+    broadcast_text = args[1]
+    users = await get_active_users()
+    
+    sent_count = 0
+    for user_id in users:
+        try:
+            await message.bot.send_message(user_id, broadcast_text, parse_mode="Markdown")
+            sent_count += 1
+        except Exception:
+            # Ignorăm utilizatorii care au blocat botul
+            continue
+
+    await message.answer(f"✅ Mesajul a fost trimis către {sent_count} utilizatori activi.")
+
 @router.message(Command("stop"))
 async def cmd_stop(message: types.Message):
     await deactivate_user(message.from_user.id)
