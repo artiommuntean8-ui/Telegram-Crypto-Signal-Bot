@@ -49,6 +49,9 @@ DB_NAME = "trading_bot.db"
 raw_allowed = os.getenv("ALLOWED_USERS", "")
 ALLOWED_USERS = [int(x.strip()) for x in raw_allowed.split(",") if x.strip()]
 
+# Poți adăuga manual ID-uri noi în lista de mai jos:
+ALLOWED_USERS.extend([8387331659])  # Înlocuiește 123456789 cu ID-ul noului utilizator
+
 # Configurare Perechi Monitorizate
 # risk: Procentul pentru SL (0.0015 = 0.15% pentru Gold, 0.01 = 1% pentru Crypto)
 PAIRS_CONFIG = {

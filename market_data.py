@@ -23,9 +23,8 @@ def is_market_open():
 
 async def get_binance_data(symbol):
     """Descarcă datele XAUUSD folosind Yahoo Finance (ocolind blocajele Binance)."""
-    # PAXG-USD (Pax Gold) urmărește prețul aurului spot 1:1.
-    # Spre deosebire de GC=F (Futures), PAXG are de obicei date Real-Time pe Yahoo Finance.
-    ticker_symbol = "PAXG-USD" if symbol == "XAUUSD" else symbol
+    # GC=F (Gold Futures) este mai precis pentru prețul aurului real (XAUUSD) pe Yahoo Finance
+    ticker_symbol = "GC=F" if symbol == "XAUUSD" else symbol
     
     try:
         # yfinance este o bibliotecă sincronă, o rulăm în thread-ul separat pentru a nu bloca botul
