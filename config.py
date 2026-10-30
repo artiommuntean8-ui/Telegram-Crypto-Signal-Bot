@@ -1,62 +1,37 @@
-# config.py
-import os
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
-# Încarcă variabilele din fișierul .env (dacă există)
-load_dotenv()
 
-# Înlocuiește cu token-ul primit de la @BotFather
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+class Settings(BaseSettings):
+    """Configurația aplicației utilizând variabile de mediu și Pydantic Settings."""
 
-# API Key pentru Twelve Data (Obține-l gratuit de pe twelvedata.com)
-TWELVE_DATA_API_KEY = os.getenv("TWELVE_DATA_API_KEY", "YOUR_FREE_API_KEY")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore"
+    )
 
-# Cheia de criptare pentru datele din baza de date
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
+    BOT_TOKEN: str = Field(..., description="Token-ul Telegram primit de la @BotFather")
+    DATABASE_URL: str = Field(
+        default="sqlite+aiosqlite:///crypto_bot.db",
+        description="URL de conexiune asincronă SQLAlchemy"
+    )
+    BINANCE_BASE_URL: str = Field(
+        default="https://api.binance.com",
+        description="Endpoint de bază pentru Binance Public API"
+    )
+    CHECK_INTERVAL_SECONDS: int = Field(
+        default=30,
+        description="Intervalul în secunde pentru verificarea periodică a semnalelor"
+    )
+    DEFAULT_ALERT_THRESHOLD: float = Field(
+        default=2.0,
+        description="Pragul procentual implicit de alertă la variația prețului"
+    )
+    REQUEST_TIMEOUT: float = Field(
+        default=10.0,
+        description="Timeout în secunde pentru apelurile HTTP către API-uri externe"
+    )
 
-# Adresa portofelului tău TON (unde primești banii)
-# Asigură-te că adresa de mai jos este cea corectă
-TON_WALLET_ADDRESS = os.getenv("TON_WALLET_ADDRESS", "UQA4fTmPZAVsOGlu7-5HBpBpNzHWkQ5aX4VSrCIwvOT1Y37Q")
 
-# Link-ul tău de Telegram pentru suport (unde trimit userii dovada plății)
-ADMIN_LINK = os.getenv("ADMIN_LINK", "https://t.me/username_tau")
-
-# Configurare Produse (Prețuri în USD și echivalent TON)
-# Aproximare: 1 TON ≈ 5 USD (Poți ajusta manual)
-TON_PRODUCTS = {
-    "weekly": {
-        "name": "Abonament Săptămânal",
-        "price_usd": 15,
-        "price_ton": 11.62,
-        "days": 7
-    },
-    "monthly": {
-        "name": "Abonament Lunar",
-        "price_usd": 45,
-        "price_ton": 34.86,
-        "days": 30
-    },
-    "yearly": {
-        "name": "Abonament Anual",
-        "price_usd": 400,
-        "price_ton": 309.84,
-        "days": 365
-    }
-}
-
-# Numele fișierului de bază de date
-DB_NAME = "trading_bot.db"
-
-# Listă de ID-uri utilizatori permiși.
-# Citește din .env un string de forma "123456,789012" și îl convertește în listă de int.
-raw_allowed = os.getenv("ALLOWED_USERS", "")
-ALLOWED_USERS = [int(x.strip()) for x in raw_allowed.split(",") if x.strip()]
-
-# Poți adăuga manual ID-uri noi în lista de mai jos:
-ALLOWED_USERS.extend([8387331659])  # Adaugă aici ID-urile noi separate prin virgulă
-
-# Configurare Perechi Monitorizate
-# risk: Procentul pentru SL (0.0015 = 0.15% pentru Gold, 0.01 = 1% pentru Crypto)
-PAIRS_CONFIG = {
-    "XAUUSD": {"name": "XAUUSD", "risk": 0.0015}
-}
+settings = Settings()
